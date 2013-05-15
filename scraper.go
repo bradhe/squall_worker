@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"log"
 	"fmt"
 	"strings"
@@ -41,6 +42,7 @@ type ScrapeResponse struct {
 	MD5Sum		string
 }
 
+// Wrapper type for running scrapes asynchronously.
 type runScrapeResponse struct {
 	// The response we care about
 	response	ScrapeResponse
@@ -48,6 +50,16 @@ type runScrapeResponse struct {
 	// Any relevant error
 	err		error
 }
+
+var RequestQueue	chan(ScrapeRequest)
+var ResponseQueue	chan(ScrapeResponse)
+
+
+// Indicator as to whether or not the environment is fully configured. If true,
+// assume that the procs are started for this. If false, assume that the
+// Initialize() func needs to be called before scrape requests can be
+// processed.
+var initialized		bool
 
 func (self ScrapeRequest) runScrape(ch chan runScrapeResponse) {
 	response := ScrapeResponse{}
@@ -107,19 +119,67 @@ func (self ScrapeRequest) Perform() (ScrapeResponse, error) {
 	self.runScrape(ch)
 	resp := <-ch
 
-	// A little logging to help.
-	if resp.err != nil {
-		log.Println(fmt.Sprintf("Request %d: Scrape failed.", self.RequestID))
-	} else {
-		log.Println(fmt.Sprintf("Request %d: Scrape complete in %s", self.RequestID, resp.response.ResponseTime))
+	return resp.response, resp.err
+}
+
+func (self ScrapeRequest) PerformAsync(n int) {
+	if !initialized {
+		Initialize()
 	}
 
-	return resp.response, resp.err
+	for i := 0; i < n; i++ {
+		RequestQueue <-self
+	}
+}
+
+// Starts and runs a worker that pulls jobs off the RequestQueue queue.
+func runQueueWorker() {
+	for {
+		select {
+		case request := <-RequestQueue: {
+			response, err := request.Perform()
+
+			// A little logging to help.
+			if err != nil {
+				log.Println(fmt.Sprintf("Request %d: Scrape failed.", request.RequestID))
+			} else {
+				log.Println(fmt.Sprintf("Request %d: Scrape complete in %s", request.RequestID, response.ResponseTime))
+			}
+
+			ResponseQueue <-response
+		}
+		}
+	}
+}
+
+func Initialize() {
+	n := (runtime.NumCPU() - 1)
+
+	// Make sure it's not TOO small, but want to leave 1 CPU for other app logic.
+	if n < 1 {
+		n = 1
+	}
+
+	RequestQueue	= make(chan(ScrapeRequest), n)
+
+	// Make the queue a bit bigger than request queue such that it can just
+	// run away all on it's own.
+	ResponseQueue	= make(chan(ScrapeResponse), n * 100)
+
+	log.Println(fmt.Sprintf("Starting %d queue workers.", n))
+
+	for i := 0; i < n; i++ {
+		go runQueueWorker()
+	}
+
+	// Mark the whole thing as initialized!
+	initialized = true
 }
 
 // Instantiate a new ScrapeRequest from a JSON byte string.
 func NewScrapeRequestFromJson(str []byte) ScrapeRequest {
 	var request ScrapeRequest
 	json.Unmarshal(str, &request)
+
 	return request
 }

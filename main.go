@@ -49,13 +49,11 @@ func main() {
 		case obj, ok := <-listener: {
 			if ok {
 				request := NewScrapeRequestFromJson(obj.Body)
-
-				log.Println(fmt.Sprintf("Request %d: Syncronously scraping %s", request.RequestID, request.Url))
-
-				for i := 0; i < 50; i++ {
-					request.Perform()
-				}
+				request.PerformAsync(100)
 			}
+		}
+		case <-ResponseQueue: {
+			// Do something with this response. Shove it down another pipe?
 		}
 		}
 	}
