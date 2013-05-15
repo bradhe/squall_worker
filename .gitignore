@@ -1,2 +1,5 @@
 # Ignore Vim droppings
 *.sw[onp]
+
+# Ignore binary output
+/squall_worker
