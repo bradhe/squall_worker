@@ -132,6 +132,16 @@ func (self ScrapeRequest) PerformAsync(n int) {
 	}
 }
 
+func (self ScrapeResponse) ToJSON() ([]byte) {
+	bytes, err := json.Marshal(self)
+
+	if err != nil {
+		log.Println(fmt.Sprintf("Request %d: Marshalling to JSON failed. %s", self.RequestID, err))
+	}
+
+	return bytes
+}
+
 // Starts and runs a worker that pulls jobs off the RequestQueue queue.
 func runQueueWorker() {
 	for {
@@ -143,7 +153,7 @@ func runQueueWorker() {
 			if err != nil {
 				log.Println(fmt.Sprintf("Request %d: Scrape failed.", request.RequestID))
 			} else {
-				log.Println(fmt.Sprintf("Request %d: Scrape complete in %s", request.RequestID, response.ResponseTime))
+				Debugf("Request %d: Back!", request.RequestID)
 			}
 
 			ResponseQueue <-response
@@ -154,13 +164,14 @@ func runQueueWorker() {
 
 func Initialize() {
 	n := (runtime.NumCPU() - 1)
+	//n := 200
 
 	// Make sure it's not TOO small, but want to leave 1 CPU for other app logic.
 	if n < 1 {
 		n = 1
 	}
 
-	RequestQueue	= make(chan(ScrapeRequest), n)
+	RequestQueue	= make(chan(ScrapeRequest), n * 100)
 
 	// Make the queue a bit bigger than request queue such that it can just
 	// run away all on it's own.
