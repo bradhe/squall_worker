@@ -1,16 +1,18 @@
 package main
 
 import (
-	"flag"
+	"os"
 	"fmt"
 	"log"
 	"github.com/streadway/amqp"
 )
 
 func main() {
-	var rabbitUrl string
-	flag.StringVar(&rabbitUrl, "h", "amqp://localhost", "The URL of the AMQP server.")
-	flag.Parse()
+	rabbitUrl := os.Getenv("AMQP_URL")
+
+	if rabbitUrl == "" {
+		rabbitUrl = "amqp://localhost"
+	}
 
 	log.Println(fmt.Sprintf("Connecting to RabbitMQ (%s)", rabbitUrl))
 
