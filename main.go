@@ -61,10 +61,12 @@ func main() {
 	for {
 		select {
 		case obj, ok := <-listener: {
+			Debugln("Found request to execute.")
+
 			if ok {
 				request := NewScrapeRequestFromJson(obj.Body)
 				log.Printf("Request %d: Starting scrape of %s\n", request.RequestID, request.Url)
-				request.PerformAsync(1000)
+				request.PerformAsync(100)
 			}
 		}
 		case resp := <-ResponseQueue: {
