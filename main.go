@@ -33,7 +33,7 @@ func main() {
 	defer channel.Close()
 
 	// The exchange we're going to pull stuff from...
-	err = channel.ExchangeDeclare("squall.workers", "direct", true, false, false, false, nil)
+	err = channel.ExchangeDeclare("squall.workers", "fanout", true, false, false, false, nil)
 
 	if err != nil {
 		panic(err)
@@ -47,14 +47,20 @@ func main() {
 	}
 
 	// Just ignore this crap.
-	_, err = channel.QueueDeclare("scrape_requests", true, true, false, true, nil)
+	_, err = channel.QueueDeclare("", true, false, false, true, nil)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = channel.QueueBind("", "#", "squall.workers", true, nil)
 
 	if err != nil {
 		panic(err)
 	}
 
 	// Start up dat consumer...!
-	listener, err := channel.Consume("scrape_requests", "squall.workers", true, true, true, false, nil)
+	listener, err := channel.Consume("", "squall.workers", true, false, true, false, nil)
 
 	if err != nil {
 		panic(err)
