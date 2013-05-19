@@ -75,7 +75,7 @@ func main() {
 			message.Body = resp.ToJSON()
 			message.ContentType = "application/json"
 
-			channel.Publish("squall.aggregators", "scrape_responses", false, false, message)
+			channel.Publish("squall.aggregators", "", false, false, message)
 		}
 		}
 	}
