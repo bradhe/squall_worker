@@ -14,6 +14,10 @@ import (
 	"net/http"
 )
 
+const (
+	THREAD_COUNT_SCALAR	= 2
+);
+
 type ScrapeRequest struct {
 	// The URL of the request
 	Url		string
@@ -163,8 +167,7 @@ func runQueueWorker() {
 }
 
 func Initialize() {
-	n := (runtime.NumCPU() - 1)
-	//n := 200
+	n := (runtime.NumCPU() - 1) * THREAD_COUNT_SCALAR
 
 	// Make sure it's not TOO small, but want to leave 1 CPU for other app logic.
 	if n < 1 {
